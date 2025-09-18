@@ -96,20 +96,24 @@ def receive_messages(client_socket: socket.socket) -> None:
             index = client_sockets.index(client_socket)
             client_name = client_sockets[index]
 
-            # format and broadcast client message
             message = payload.decode(ENCODER)
+
+            if message == '\\exit':
+                # kill client connection and receiving thread
+                disconnect_client(client_socket)
+                break
+
+            # format and broadcast client message
             broadcast_message = f'{client_name}: {message}|{client_name}'
-            broadcast_processing_queue.put(message)
+            broadcast_processing_queue.put(broadcast_message)
 
         except Exception as e:
             # log error
             error_message = f'ERROR (receive messages): {e}'
             log_messages_queue.put(error_message)
             
-            # close connection
+            # kill client connection and receiving thread
             disconnect_client(client_socket) 
-
-            # end thread
             break
 
 
