@@ -19,12 +19,13 @@ server_socket.listen()
 log_messages_queue = queue.Queue()
 
 # broadcast messages queue
-broadcast_messages_queue = queue.Queue()
+broadcast_processing_queue = queue.Queue()
 
 # store client information
 client_sockets   = []
 client_addresses = []
 client_names     = []
+
 
 # print log messages to stdout
 def log_messages() -> None:
@@ -35,11 +36,16 @@ def log_messages() -> None:
 # send messages to clients
 def broadcast_messages() -> None:
     while True:
+    # message format: message|sender
         #TODO:
         pass
 
-def receive_messages() -> None:
-    pass
+# logging thread
+logging_thread = threading.Thread(target=log_messages)
+
+# broadcasting thread
+broadcasting_thread = threading.Thread(target=broadcast_messages)
+
 
 def connect_client() -> None:
     while True:
@@ -68,7 +74,7 @@ def connect_client() -> None:
 
         # broadcast to clients about new connection
         broadcast_message = f'SERVER: {client_name} joined the chat room|SERVER'
-        broadcast_messages_queue.put(broadcast_message)
+        broadcast_processing_queue.put(broadcast_message)
 
         # thread dedicated to receiving messages from client
         receiving_thread = threading.Thread(
@@ -77,12 +83,60 @@ def connect_client() -> None:
             )
         receiving_thread.start()
 
-# logging thread
-logging_thread = threading.Thread(target=log_messages)
-logging_thread.start()
 
-# broadcasting thread
-broadcasting_thread = threading.Thread(target=broadcast_messages)
-broadcasting_thread.start()
+def receive_messages(client_socket: socket.socket) -> None:
+    while True:
+        try:
+            # get client message
+            header = client_socket.recv(HEADER_SIZE)
+            payload_length = unpack_header(header)
+            payload = client_socket.recv(payload_length)
 
-connect_client()
+            # lookup client name 
+            index = client_sockets.index(client_socket)
+            client_name = client_sockets[index]
+
+            # format and broadcast client message
+            message = payload.decode(ENCODER)
+            broadcast_message = f'{client_name}: {message}|{client_name}'
+            broadcast_processing_queue.put(message)
+
+        except Exception as e:
+            # log error
+            error_message = f'ERROR (receive messages): {e}'
+            log_messages_queue.put(error_message)
+            
+            # close connection
+            disconnect_client(client_socket) 
+
+            # end thread
+            break
+
+
+def disconnect_client(client_socket: socket.socket) -> None:
+    # lookup client details 
+    index = client_sockets.index(client_socket)
+    client_address = client_addresses[index]
+    client_name = client_sockets[index]
+
+    # remove client details
+    client_sockets.remove(client_socket)
+    client_addresses.remove(client_address)
+    client_names.remove(client_name)
+
+    # close client socket
+    client_socket.close()
+
+    # log client disconnected
+    log_message = f'client {client_address} disconnected.'
+    log_messages_queue.put(log_message)
+
+    # broadcast client disconnected
+    broadcast_messsage = f'SERVER: {client_name} left the chat room|SERVER'
+    broadcast_processing_queue.put(broadcast_messsage)
+
+
+if __name__ == '__main__':
+    logging_thread.start()
+    broadcasting_thread.start()
+    connect_client()
