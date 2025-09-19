@@ -52,7 +52,7 @@ def broadcast_messages() -> None:
             for client_socket in client_sockets:
                 # lookup client name 
                 index = client_sockets.index(client_socket)
-                client_name = client_sockets[index]
+                client_name = client_names[index]
 
                 if client_name != sender:
                     payload = data_encapsulate(message)
@@ -106,7 +106,7 @@ def receive_messages(client_socket: socket.socket) -> None:
 
             # lookup client name 
             index = client_sockets.index(client_socket)
-            client_name = client_sockets[index]
+            client_name = client_names[index]
 
             message = payload.decode(ENCODER)
 
@@ -133,7 +133,7 @@ def disconnect_client(client_socket: socket.socket) -> None:
     # lookup client details 
     index = client_sockets.index(client_socket)
     client_address = client_addresses[index]
-    client_name = client_sockets[index]
+    client_name = client_names[index]
 
     # remove client details
     client_sockets.remove(client_socket)
