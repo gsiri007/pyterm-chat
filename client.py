@@ -4,6 +4,7 @@ import socket
 import sys
 import threading
 import queue
+import time
 from based import data_encapsulate, unpack_header, HEADER_SIZE, ENCODER
 
 # constants
@@ -16,6 +17,7 @@ client_socket.connect((SERVER_IP, SERVER_PORT))
 
 # message queue to write output to console
 output_message_queue = queue.Queue()
+output_message_queue.put('--- welcome to chat room ---')
 
 # connection closing event
 disconnect_event = threading.Event()
@@ -66,12 +68,13 @@ def client_disconnect() -> None:
     sys.exit(0)
 
 
-output_writing_thread = threading.Thread(target=write_output)
 receiving_thread = threading.Thread(target=receive_messages)
 sending_thread = threading.Thread(target=send_messages)
+output_writing_thread = threading.Thread(target=write_output)
 
 if __name__ == '__main__':
     output_writing_thread.start()
+    time.sleep(0.5)
     receiving_thread.start()
     sending_thread.start()
     
