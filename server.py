@@ -36,9 +36,26 @@ def log_messages() -> None:
 # send messages to clients
 def broadcast_messages() -> None:
     while True:
-    # message format: message|sender
-        #TODO:
-        pass
+        # process the broadcast message into message and sender
+        message_to_process = broadcast_processing_queue.get()
+        message, sender = message_to_process.split('|')
+
+        # broadcast the message to every client
+        if sender == 'SERVER':
+            for client_socket in client_sockets:
+                payload = data_encapsulate(message)
+                client_socket.send(payload)
+        else:
+            # skips the sender and broadcast message to clients
+            for client_socket in client_sockets:
+                # lookup client name 
+                index = client_sockets.index(client_socket)
+                client_name = client_sockets[index]
+
+                if client_name != sender:
+                    payload = data_encapsulate(message)
+                    client_socket.send(payload)
+
 
 # logging thread
 logging_thread = threading.Thread(target=log_messages)
