@@ -17,6 +17,7 @@ server_socket.listen()
 
 # log messages queue
 log_messages_queue = queue.Queue()
+log_messages_queue.put('--- server running ---')
 
 # broadcast messages queue
 broadcast_processing_queue = queue.Queue()
@@ -32,6 +33,7 @@ def log_messages() -> None:
     while True:
         message = log_messages_queue.get()
         print(message)
+
 
 # send messages to clients
 def broadcast_messages() -> None:
@@ -57,13 +59,6 @@ def broadcast_messages() -> None:
                     client_socket.send(payload)
 
 
-# logging thread
-logging_thread = threading.Thread(target=log_messages)
-
-# broadcasting thread
-broadcasting_thread = threading.Thread(target=broadcast_messages)
-
-
 def connect_client() -> None:
     while True:
         # accept client connection 
@@ -80,7 +75,7 @@ def connect_client() -> None:
         # capture the client name
         header = client_socket.recv(HEADER_SIZE)
         payload_length = unpack_header(header)
-        client_name = client_socket.recv(payload_length)
+        client_name = client_socket.recv(payload_length).decode(ENCODER)
 
         # store client name
         client_names.append(client_name)
@@ -90,7 +85,7 @@ def connect_client() -> None:
         log_messages_queue.put(log_message)
 
         # broadcast to clients about new connection
-        broadcast_message = f'SERVER: {client_name} joined the chat room|SERVER'
+        broadcast_message = f'SERVER: {client_name} joined the chat room|{client_name}'
         broadcast_processing_queue.put(broadcast_message)
 
         # thread dedicated to receiving messages from client
@@ -156,6 +151,11 @@ def disconnect_client(client_socket: socket.socket) -> None:
     broadcast_messsage = f'SERVER: {client_name} left the chat room|SERVER'
     broadcast_processing_queue.put(broadcast_messsage)
 
+# logging thread
+logging_thread = threading.Thread(target=log_messages)
+
+# broadcasting thread
+broadcasting_thread = threading.Thread(target=broadcast_messages)
 
 if __name__ == '__main__':
     logging_thread.start()
